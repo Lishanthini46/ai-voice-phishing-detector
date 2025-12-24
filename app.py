@@ -2,7 +2,7 @@ import streamlit as st
 import librosa
 import numpy as np
 import pickle
-import matplotlib.pyplot as plt
+
 
 # -----------------------------
 # Page Configuration
@@ -55,10 +55,10 @@ if uploaded_file is not None:
     # -----------------------------
     # Prediction Result
     # -----------------------------
-    if prediction == 1:
-        st.error("🚨 Phishing / Scam Call Detected!")
-    else:
-        st.success("✅ This call seems to be Genuine.")
+   if prediction[0] == 1:
+    st.error("⚠️ SCAM / PHISHING CALL DETECTED")
+   else:
+    st.success("✅ NORMAL / SAFE CALL")
 
     # -----------------------------
     # MFCC Visualization
@@ -66,7 +66,7 @@ if uploaded_file is not None:
     y, sr = librosa.load(uploaded_file, duration=30)
     mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=40)
 
-    fig, ax = plt.subplots()
+    
     img = ax.imshow(mfccs, aspect='auto', origin='lower')
     plt.colorbar(img, ax=ax)
     ax.set_title("MFCC Features")
@@ -80,6 +80,7 @@ if uploaded_file is not None:
 # -----------------------------
 st.markdown("---")
 st.markdown("🔐 **Cyber Security Project – AI Voice Phishing Detection**")
+
 
 
 
