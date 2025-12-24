@@ -1,108 +1,79 @@
 import streamlit as st
+import numpy as np
 import librosa
 import librosa.display
 import matplotlib.pyplot as plt
-import numpy as np
-import pickle
-import os
 import tempfile
+import pickle
 
-# -------------------------------
+# -----------------------------
 # Load trained model
-# -------------------------------
-with open("model.pkl", "rb") as f:
-    model = pickle.load(f)
+# -----------------------------
+model = pickle.load(open("voice_phishing_model.pkl", "rb"))
 
-# -------------------------------
+# -----------------------------
+# Feature extraction function
+# -----------------------------
+def extract_mfcc(audio_path):
+    y, sr = librosa.load(audio_path, duration=5)
+    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
+    mfcc_mean = np.mean(mfcc.T, axis=0)
+    return mfcc, mfcc_mean
+
+
+# -----------------------------
 # Streamlit UI
-# -------------------------------
+# -----------------------------
 st.set_page_config(page_title="AI Voice Phishing Detector", layout="centered")
 
-st.title("📞 AI Voice Phishing Detector")
-st.write("Upload a call recording to detect whether it is **Phishing** or **Normal**.")
+st.title("🎙️ AI Voice Phishing Detector")
+st.write("Upload an audio file to detect whether it is **Phishing** or **Safe**.")
 
-# -------------------------------
-# Audio Upload
-# -------------------------------
 uploaded_file = st.file_uploader(
     "Upload WAV audio file",
     type=["wav"]
 )
 
-# -------------------------------
-# MFCC Extraction Function
-# -------------------------------
-def extract_mfcc(audio_path):
-    y, sr = librosa.load(audio_path, duration=5)
-    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
-    return mfcc
-
-# -------------------------------
-# When file uploaded
-# -------------------------------
+# -----------------------------
+# When file is uploaded
+# -----------------------------
 if uploaded_file is not None:
 
-    # Save uploaded file temporarily
+    # Save file temporarily
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
         tmp.write(uploaded_file.read())
         audio_path = tmp.name
 
+    # Play audio
     st.audio(uploaded_file)
 
-    # -------------------------------
-    # MFCC Extraction
-    # -------------------------------
-    mfcc = extract_mfcc(audio_path)
+    # Extract MFCC
+    mfcc, mfcc_mean = extract_mfcc(audio_path)
 
-    # -------------------------------
-    # MFCC Graph
-    # -------------------------------
+    # -----------------------------
+    # MFCC Visualization
+    # -----------------------------
     st.subheader("🎵 MFCC Feature Visualization")
 
-    fig1, ax1 = plt.subplots()
+    fig, ax = plt.subplots()
     img = librosa.display.specshow(
         mfcc,
         x_axis="time",
-        ax=ax1
+        ax=ax
     )
-    ax1.set(title="MFCC Heatmap")
-    fig1.colorbar(img, ax=ax1)
+    fig.colorbar(img, ax=ax)
+    st.pyplot(fig)
 
-    st.pyplot(fig1)
-
-    # -------------------------------
-    # Prepare Features for Model
-    # -------------------------------
-    features = np.mean(mfcc.T, axis=0)
-
-    # -------------------------------
+    # -----------------------------
     # Prediction
-    # -------------------------------
-    prediction = model.predict([features])
-    probability = model.predict_proba([features])[0]
+    # -----------------------------
+    prediction = model.predict([mfcc_mean])
 
-    # -------------------------------
-    # Result Output
-    # -------------------------------
-    st.subheader("🔍 Detection Result")
+    st.subheader("🔍 Prediction Result")
 
     if prediction[0] == 1:
-        st.error("⚠️ PHISHING / SCAM CALL DETECTED")
+        st.error("⚠️ Phishing Voice Detected")
     else:
-        st.success("✅ NORMAL CALL")
+        st.success("✅ Safe Voice")
 
-    # -------------------------------
-    # Confidence Graph
-    # -------------------------------
-    st.subheader("📊 Prediction Confidence")
 
-    fig2, ax2 = plt.subplots()
-    labels = ["Normal", "Phishing"]
-    ax2.bar(labels, probability)
-    ax2.set_ylim(0, 1)
-    ax2.set_ylabel("Probability")
-
-    st.pyplot(fig2)
-
-    # Clean temp file
-    os.remove(audio_path)
