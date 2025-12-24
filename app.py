@@ -5,7 +5,7 @@ import pickle
 
 import matplotlib.pyplot as plt
 import librosa
-import librosa.display
+
 
 
 # -----------------------------
@@ -77,6 +77,7 @@ if uploaded_file is not None:
         st.error("⚠️ Phishing Voice Detected")
     else:
         st.success("✅ Safe Voice")
+
 
 
 
