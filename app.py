@@ -1,10 +1,12 @@
 import streamlit as st
 import numpy as np
-import librosa
-import librosa.display
-import matplotlib.pyplot as plt
 import tempfile
 import pickle
+
+import matplotlib.pyplot as plt
+import librosa
+import librosa.display
+
 
 # -----------------------------
 # Load trained model
@@ -75,5 +77,6 @@ if uploaded_file is not None:
         st.error("⚠️ Phishing Voice Detected")
     else:
         st.success("✅ Safe Voice")
+
 
 
