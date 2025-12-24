@@ -1,105 +1,94 @@
-import streamlit as st
-import numpy as np
-import tempfile
-import pickle
-import matplotlib.pyplot as plt
 import librosa
 import librosa.display
+import matplotlib.pyplot as plt
+import numpy as np
+import pickle
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
 
-# -----------------------------
-# Load trained model
-# -----------------------------
-model = pickle.load(open("voice_phishing_model.pkl", "rb"))
+# ================================
+# STEP 1: LOAD AUDIO FILE
+# ================================
 
-# -----------------------------
-# Feature extraction function
-# -----------------------------
-def extract_mfcc(audio_path):
-    y, sr = librosa.load(audio_path, duration=5)
-    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
-    mfcc_mean = np.mean(mfcc.T, axis=0)
-    return y, sr, mfcc, mfcc_mean
+audio_path = "sample_call.wav"   # <-- change if needed
 
-# -----------------------------
-# Streamlit UI
-# -----------------------------
-st.set_page_config(page_title="AI Voice Phishing Detector", layout="centered")
+y, sr = librosa.load(audio_path, sr=None)
 
-st.title("🎙️ AI Voice Phishing Detector")
-st.write("Upload an audio file to detect whether it is **Phishing** or **Safe**.")
+print("Audio Loaded Successfully")
+print("Sample Rate:", sr)
 
-uploaded_file = st.file_uploader(
-    "Upload WAV audio file",
-    type=["wav"]
+# ================================
+# STEP 2: MFCC FEATURE EXTRACTION
+# ================================
+
+mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
+
+# Mean MFCC (used for ML model)
+mfcc_mean = np.mean(mfcc.T, axis=0)
+
+# ================================
+# STEP 3: MFCC VISUALIZATION
+# ================================
+
+plt.figure(figsize=(10, 4))
+librosa.display.specshow(mfcc, x_axis='time', sr=sr)
+plt.colorbar(format="%+2.0f dB")
+plt.title("MFCC Feature Visualization")
+plt.xlabel("Time")
+plt.ylabel("MFCC Coefficients")
+plt.tight_layout()
+plt.show()
+
+# ================================
+# STEP 4: SPECTROGRAM VISUALIZATION
+# ================================
+
+stft = np.abs(librosa.stft(y))
+spectrogram = librosa.amplitude_to_db(stft, ref=np.max)
+
+plt.figure(figsize=(10, 4))
+librosa.display.specshow(spectrogram, sr=sr, x_axis='time', y_axis='hz')
+plt.colorbar()
+plt.title("Frequency Spectrum (Spectrogram)")
+plt.xlabel("Time")
+plt.ylabel("Frequency")
+plt.tight_layout()
+plt.show()
+
+# ================================
+# STEP 5: TRAIN SIMPLE MODEL (Demo)
+# ================================
+
+# Dummy dataset (replace with real dataset if available)
+X = np.array([
+    mfcc_mean,
+    mfcc_mean + 1,
+    mfcc_mean - 1
+])
+
+y_labels = np.array([1, 0, 1])  # 1 = phishing, 0 = normal
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y_labels, test_size=0.3, random_state=42
 )
 
-# -----------------------------
-# When file is uploaded
-# -----------------------------
-if uploaded_file is not None:
+model = RandomForestClassifier()
+model.fit(X_train, y_train)
 
-    # Save file temporarily
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-        tmp.write(uploaded_file.read())
-        audio_path = tmp.name
+# ================================
+# STEP 6: PREDICTION
+# ================================
 
-    # Play audio
-    st.audio(uploaded_file)
+prediction = model.predict([mfcc_mean])
 
-    # Extract MFCC + Audio
-    y, sr, mfcc, mfcc_mean = extract_mfcc(audio_path)
+print("\n========== RESULT ==========")
+if prediction[0] == 1:
+    print("🚨 PHISHING CALL DETECTED")
+else:
+    print("✅ NORMAL CALL")
 
-    # -----------------------------
-    # MFCC Visualization
-    # -----------------------------
-    st.subheader("🎵 MFCC Feature Visualization")
-    mfcc_db = librosa.power_to_db(np.abs(mfcc), ref=np.max)
+# ================================
+# END
+# ================================
 
-    fig, ax = plt.subplots(figsize=(10, 4))
-    img = ax.imshow(
-        mfcc_db,
-        aspect="auto",
-        origin="lower",
-        cmap="viridis"
-    )
-    ax.set_title("MFCC (Mel-Frequency Cepstral Coefficients)")
-    ax.set_xlabel("Time")
-    ax.set_ylabel("MFCC Coefficients")
-    fig.colorbar(img, ax=ax, format="%+2.0f dB")
-    st.pyplot(fig)
-
-    # -----------------------------
-    # Frequency Visualization
-    # -----------------------------
-    st.subheader("📈 Frequency Spectrum")
-    fig2, ax2 = plt.subplots(figsize=(10, 4))
-    D = np.abs(librosa.stft(y))
-    librosa.display.specshow(
-        librosa.amplitude_to_db(D, ref=np.max),
-        sr=sr,
-        y_axis='log',
-        x_axis='time',
-        cmap='magma',
-        ax=ax2
-    )
-    ax2.set_title("Frequency Spectrum")
-    fig2.colorbar(ax2.images[0], ax=ax2, format="%+2.0f dB")
-    st.pyplot(fig2)
-
-    # -----------------------------
-    # Prediction
-    # -----------------------------
-    prediction = model.predict([mfcc_mean])
-
-    st.subheader("🔍 Prediction Result")
-    if prediction[0] == 1:
-        st.error("⚠️ Phishing Voice Detected")
-    else:
-        st.success("✅ Safe Voice")
-
-
-
-    
-
-   
-
+        
