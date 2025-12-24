@@ -38,7 +38,6 @@ if uploaded_file is not None:
 
     # 🔊 Waveform
     st.subheader("📈 Audio Waveform")
-    fig1, ax1 = plt.subplots()
     ax1.plot(audio)
     ax1.set_title("Waveform")
     ax1.set_xlabel("Time")
@@ -49,7 +48,6 @@ if uploaded_file is not None:
     mfcc, features = extract_features(audio, sr)
 
     st.subheader("📊 MFCC Features")
-    fig2, ax2 = plt.subplots()
     img = ax2.imshow(mfcc, aspect='auto', origin='lower')
     ax2.set_title("MFCC Spectrogram")
     ax2.set_xlabel("Time")
@@ -76,4 +74,5 @@ st.markdown(
     "<p style='text-align: center; font-size: 12px;'>Final Year Project | AI Voice Phishing Detection</p>",
     unsafe_allow_html=True
 )
+
 
