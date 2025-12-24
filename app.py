@@ -2,11 +2,8 @@ import streamlit as st
 import numpy as np
 import tempfile
 import pickle
-
 import matplotlib.pyplot as plt
 import librosa
-
-
 
 # -----------------------------
 # Load trained model
@@ -14,7 +11,7 @@ import librosa
 model = pickle.load(open("voice_phishing_model.pkl", "rb"))
 
 # -----------------------------
-# Feature extraction function
+# Feature extraction
 # -----------------------------
 def extract_mfcc(audio_path):
     y, sr = librosa.load(audio_path, duration=5)
@@ -31,13 +28,10 @@ st.set_page_config(page_title="AI Voice Phishing Detector", layout="centered")
 st.title("🎙️ AI Voice Phishing Detector")
 st.write("Upload an audio file to detect whether it is **Phishing** or **Safe**.")
 
-uploaded_file = st.file_uploader(
-    "Upload WAV audio file",
-    type=["wav"]
-)
+uploaded_file = st.file_uploader("Upload WAV file", type=["wav"])
 
 # -----------------------------
-# When file is uploaded
+# Process Audio
 # -----------------------------
 if uploaded_file is not None:
 
@@ -49,21 +43,20 @@ if uploaded_file is not None:
     # Play audio
     st.audio(uploaded_file)
 
-    # Extract MFCC
+    # Extract features
     mfcc, mfcc_mean = extract_mfcc(audio_path)
 
     # -----------------------------
-    # MFCC Visualization
+    # MFCC Visualization (SAFE)
     # -----------------------------
     st.subheader("🎵 MFCC Feature Visualization")
 
-    fig, ax = plt.subplots()
-    img = librosa.display.specshow(
-        mfcc,
-        x_axis="time",
-        ax=ax
-    )
-    fig.colorbar(img, ax=ax)
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.imshow(mfcc, aspect="auto", origin="lower")
+    ax.set_title("MFCC Coefficients")
+    ax.set_xlabel("Time")
+    ax.set_ylabel("MFCC Coefficients")
+
     st.pyplot(fig)
 
     # -----------------------------
@@ -78,6 +71,6 @@ if uploaded_file is not None:
     else:
         st.success("✅ Safe Voice")
 
+    
 
-
-
+   
