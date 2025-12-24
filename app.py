@@ -2,7 +2,7 @@ import streamlit as st
 import librosa
 import numpy as np
 import pickle
-import matplotlib.pyplot as plt
+
 
 # Page config
 st.set_page_config(
@@ -76,3 +76,4 @@ st.markdown(
     "<p style='text-align: center; font-size: 12px;'>Final Year Project | AI Voice Phishing Detection</p>",
     unsafe_allow_html=True
 )
+
