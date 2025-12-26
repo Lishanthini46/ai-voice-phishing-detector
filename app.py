@@ -68,7 +68,7 @@ if uploaded_file is not None:
         mfcc,
         x_axis="time",
         sr=sr,
-        cmap="coolwarm",
+        cmap="plasma",
         ax=ax1
     )
 
@@ -121,6 +121,7 @@ if uploaded_file is not None:
 
 
         
+
 
 
 
