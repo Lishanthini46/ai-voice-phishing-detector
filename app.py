@@ -7,7 +7,7 @@ import tempfile
 import pickle
 
 # -----------------------------
-# Page Config
+# Page Setup
 # -----------------------------
 st.set_page_config(
     page_title="AI Voice Phishing Detector",
@@ -15,7 +15,7 @@ st.set_page_config(
 )
 
 # -----------------------------
-# Load model
+# Load Model
 # -----------------------------
 model = pickle.load(open("voice_phishing_model.pkl", "rb"))
 
@@ -23,12 +23,12 @@ model = pickle.load(open("voice_phishing_model.pkl", "rb"))
 # Feature Extraction
 # -----------------------------
 def extract_features(audio_path):
-    y, sr = librosa.load(audio_path, sr=16000, duration=5)
+    y, sr = librosa.load(audio_path, sr=16000, mono=True)
 
     mfcc = librosa.feature.mfcc(
         y=y,
         sr=sr,
-        n_mfcc=13,
+        n_mfcc=20,
         n_fft=2048,
         hop_length=512
     )
@@ -41,90 +41,92 @@ def extract_features(audio_path):
 # UI
 # -----------------------------
 st.title("🎙️ AI Voice Phishing Detector")
-st.write("Upload a **WAV audio file** to analyze the voice.")
+st.write("Upload a **WAV audio file** for analysis")
 
-uploaded_file = st.file_uploader("Upload audio file", type=["wav"])
+uploaded_file = st.file_uploader("Upload audio", type=["wav"])
 
-if uploaded_file is not None:
-
+if uploaded_file:
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
         tmp.write(uploaded_file.read())
         audio_path = tmp.name
 
     st.audio(uploaded_file)
 
-    # Extract features
     y, sr, mfcc, mfcc_mean = extract_features(audio_path)
 
-    # ====================================================
-    # 1️⃣ WAVEFORM
-    # ====================================================
+    # ===============================
+    # 🔊 WAVEFORM
+    # ===============================
     st.subheader("🔊 Audio Waveform")
 
-    fig_wave, ax_wave = plt.subplots(figsize=(10, 3))
-    librosa.display.waveshow(y, sr=sr, alpha=0.8, ax=ax_wave)
-    ax_wave.set_title("Waveform")
-    ax_wave.set_xlabel("Time (seconds)")
-    ax_wave.set_ylabel("Amplitude")
-
+    fig_wave, ax = plt.subplots(figsize=(12, 3), dpi=150)
+    librosa.display.waveshow(y, sr=sr, ax=ax, color="blue")
+    ax.set_title("Waveform")
+    ax.set_xlabel("Time (seconds)")
+    ax.set_ylabel("Amplitude")
     st.pyplot(fig_wave)
 
-    # ====================================================
-    # 2️⃣ MFCC GRAPH (CLEAR)
-    # ====================================================
-    st.subheader("🎵 MFCC Feature Graph")
-
-    fig_mfcc, ax_mfcc = plt.subplots(figsize=(10, 4))
+    # ===============================
+    # 🎵 MFCC (CLEAR)
+    # ===============================
+    st.subheader("🎵 MFCC Feature Map")
 
     mfcc_db = librosa.power_to_db(mfcc, ref=np.max)
+
+    fig_mfcc, ax = plt.subplots(figsize=(12, 4), dpi=150)
 
     img1 = librosa.display.specshow(
         mfcc_db,
         x_axis="time",
         sr=sr,
-        cmap="plasma",
-        ax=ax_mfcc
+        cmap="magma",
+        vmin=-80,
+        vmax=0,
+        ax=ax
     )
 
-    ax_mfcc.set_title("MFCC (Mel Frequency Cepstral Coefficients)")
-    ax_mfcc.set_xlabel("Time (seconds)")
-    ax_mfcc.set_ylabel("MFCC Coefficients")
+    ax.set_title("MFCC (High Clarity)")
+    ax.set_xlabel("Time (seconds)")
+    ax.set_ylabel("MFCC Coefficients")
 
-    cbar1 = fig_mfcc.colorbar(img1, ax=ax_mfcc)
+    cbar1 = fig_mfcc.colorbar(img1, ax=ax)
     cbar1.set_label("Intensity (dB)")
 
     st.pyplot(fig_mfcc)
 
-    # ====================================================
-    # 3️⃣ FREQUENCY SPECTRUM
-    # ====================================================
+    # ===============================
+    # 📊 FREQUENCY SPECTRUM
+    # ===============================
     st.subheader("📊 Frequency Spectrum")
 
-    D = librosa.amplitude_to_db(np.abs(librosa.stft(y)), ref=np.max)
+    D = librosa.stft(y, n_fft=2048, hop_length=512)
+    S_db = librosa.amplitude_to_db(np.abs(D), ref=np.max)
 
-    fig_spec, ax_spec = plt.subplots(figsize=(10, 4))
+    fig_spec, ax = plt.subplots(figsize=(12, 4), dpi=150)
 
     img2 = librosa.display.specshow(
-        D,
+        S_db,
         sr=sr,
         x_axis="time",
         y_axis="log",
         cmap="inferno",
-        ax=ax_spec
+        vmin=-80,
+        vmax=0,
+        ax=ax
     )
 
-    ax_spec.set_title("Frequency Spectrum (Log Scale)")
-    ax_spec.set_xlabel("Time (seconds)")
-    ax_spec.set_ylabel("Frequency (Hz)")
+    ax.set_title("Frequency Spectrum (Log Scale)")
+    ax.set_xlabel("Time (seconds)")
+    ax.set_ylabel("Frequency (Hz)")
 
-    cbar2 = fig_spec.colorbar(img2, ax=ax_spec)
+    cbar2 = fig_spec.colorbar(img2, ax=ax)
     cbar2.set_label("Intensity (dB)")
 
     st.pyplot(fig_spec)
 
-    # ====================================================
-    # 4️⃣ PREDICTION
-    # ====================================================
+    # ===============================
+    # 🔍 Prediction
+    # ===============================
     prediction = model.predict([mfcc_mean])
 
     st.subheader("🔍 Prediction Result")
@@ -136,7 +138,9 @@ if uploaded_file is not None:
 
 
 
+
         
+
 
 
 
