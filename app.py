@@ -1,142 +1,140 @@
 import streamlit as st
 import numpy as np
 import librosa
+import librosa.display
 import matplotlib.pyplot as plt
-import pickle
 import tempfile
+import pickle
 
-# ======================================
-# LOAD TRAINED MODEL
-# ======================================
-model = pickle.load(open("voice_phishing_model.pkl", "rb"))
-
-# Number of MFCC used during training
-N_MFCC = 13
-
-# ======================================
-# PAGE CONFIG
-# ======================================
-st.set_page_config(page_title="AI Voice Phishing Detector", layout="centered")
+# -------------------------------
+# Page Config
+# -------------------------------
+st.set_page_config(
+    page_title="AI Voice Phishing Detector",
+    layout="centered"
+)
 
 st.title("🎙️ AI Voice Phishing Detector")
-st.write("Upload an audio file to detect whether it is **Normal** or **Phishing**.")
 
-# ======================================
-# FILE UPLOAD
-# ======================================
-uploaded_file = st.file_uploader("Upload WAV audio file", type=["wav"])
+# -------------------------------
+# Load model
+# -------------------------------
+model = pickle.load(open("voice_phishing_model.pkl", "rb"))
 
-# ======================================
-# FEATURE EXTRACTION
-# ======================================
+# -------------------------------
+# Audio Feature Extraction
+# -------------------------------
 def extract_features(audio_path):
-    y, sr = librosa.load(audio_path, sr=None)
+    y, sr = librosa.load(audio_path, sr=16000)
 
+    # Normalize audio
+    y = librosa.util.normalize(y)
+
+    # MFCC
     mfcc = librosa.feature.mfcc(
         y=y,
         sr=sr,
-        n_mfcc=N_MFCC,
+        n_mfcc=13,
         n_fft=2048,
         hop_length=512
     )
 
     mfcc_mean = np.mean(mfcc, axis=1)
-
     return y, sr, mfcc, mfcc_mean
 
 
-# ======================================
-# MAIN LOGIC
-# ======================================
-if uploaded_file is not None:
+# -------------------------------
+# Upload Audio
+# -------------------------------
+uploaded_file = st.file_uploader("Upload WAV file", type=["wav"])
 
+if uploaded_file:
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
         tmp.write(uploaded_file.read())
         audio_path = tmp.name
 
     st.audio(uploaded_file)
 
-    # Extract audio features
+    # Extract features
     y, sr, mfcc, mfcc_mean = extract_features(audio_path)
 
-    # ======================================
-    # AUDIO WAVEFORM
-    # ======================================
-    st.subheader("🔊 Audio Waveform")
+    # ===============================
+    # 🎵 WAVEFORM
+    # ===============================
+    st.subheader("🎵 Audio Waveform")
 
-    fig1, ax1 = plt.subplots(figsize=(12, 3))
-    ax1.plot(y, color="black")
+    fig1, ax1 = plt.subplots(figsize=(10, 3))
+    librosa.display.waveshow(y, sr=sr, ax=ax1, color="blue")
     ax1.set_title("Waveform")
-    ax1.set_xlabel("Samples")
+    ax1.set_xlabel("Time (s)")
     ax1.set_ylabel("Amplitude")
-    st.pyplot(fig1, use_container_width=True)
+    st.pyplot(fig1)
 
-    # ======================================
-    # FREQUENCY SPECTRUM
-    # ======================================
+    # ===============================
+    # 📊 FREQUENCY SPECTRUM (CLEAR)
+    # ===============================
     st.subheader("📊 Frequency Spectrum")
 
-    D = np.abs(librosa.stft(y, n_fft=2048, hop_length=512))
+    D = np.abs(librosa.stft(y, n_fft=2048))
     D_db = librosa.amplitude_to_db(D, ref=np.max)
 
-    fig2, ax2 = plt.subplots(figsize=(12, 4))
-    ax2.pcolormesh(
+    fig2, ax2 = plt.subplots(figsize=(10, 4))
+    img2 = librosa.display.specshow(
         D_db,
-        shading="nearest",
-        cmap="gray"
+        sr=sr,
+        x_axis="time",
+        y_axis="log",
+        cmap="magma",
+        ax=ax2
     )
-    ax2.set_title("Frequency Spectrum (dB)")
-    ax2.set_xlabel("Time")
-    ax2.set_ylabel("Frequency")
+    ax2.set_title("Frequency Spectrum (Log Scale)")
+    fig2.colorbar(img2, ax=ax2, format="%+2.0f dB")
+    st.pyplot(fig2)
 
-    st.pyplot(fig2, use_container_width=True)
+    # ===============================
+    # 🎼 MFCC (CLEAR & SHARP)
+    # ===============================
+    st.subheader("🎼 MFCC (Mel Frequency Cepstral Coefficients)")
 
-    # ======================================
-    # MFCC (CLEAR)
-    # ======================================
-    st.subheader("🎵 MFCC (Mel Frequency Cepstral Coefficients)")
+    mfcc_db = librosa.power_to_db(mfcc, ref=np.max)
 
-    fig3, ax3 = plt.subplots(figsize=(12, 4))
-    ax3.pcolormesh(
-        mfcc,
-        shading="nearest",
-        cmap="gray"
+    fig3, ax3 = plt.subplots(figsize=(10, 4))
+    img3 = librosa.display.specshow(
+        mfcc_db,
+        x_axis="time",
+        cmap="viridis",
+        ax=ax3
     )
     ax3.set_title("MFCC Features")
-    ax3.set_xlabel("Time Frames")
-    ax3.set_ylabel("MFCC Index")
+    ax3.set_ylabel("MFCC Coefficients")
+    fig3.colorbar(img3, ax=ax3)
+    st.pyplot(fig3)
 
-    st.pyplot(fig3, use_container_width=True)
+    # ===============================
+    # 🔍 Prediction
+    # ===============================
+    st.subheader("🔍 Prediction Result")
 
-    # ======================================
-    # PREDICTION
-    # ======================================
-    if mfcc_mean.shape[0] != model.n_features_in_:
-        st.error(
-            f"Feature mismatch! Model expects {model.n_features_in_}, "
-            f"but got {mfcc_mean.shape[0]}"
-        )
-        st.stop()
+    mfcc_mean = mfcc_mean.reshape(1, -1)
 
-    prediction = model.predict([mfcc_mean])
-    confidence = model.predict_proba([mfcc_mean])
+    try:
+        prediction = model.predict(mfcc_mean)
 
-    st.subheader("🔍 Detection Result")
+        if prediction[0] == 1:
+            st.error("⚠️ Phishing Voice Detected")
+        else:
+            st.success("✅ Safe / Normal Voice")
 
-    label = "🚨 PHISHING CALL" if prediction[0] == 1 else "✅ NORMAL CALL"
-    confidence_score = np.max(confidence) * 100
+    except Exception as e:
+        st.error("Prediction error: Model feature mismatch")
+        st.text(str(e))
 
-    if prediction[0] == 1:
-        st.error(label)
-    else:
-        st.success(label)
-
-    st.info(f"📊 Confidence: {confidence_score:.2f}%")
 
 
 
 
         
+
 
 
 
