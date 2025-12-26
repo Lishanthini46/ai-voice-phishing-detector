@@ -6,46 +6,36 @@ import matplotlib.pyplot as plt
 import tempfile
 import pickle
 
-# -----------------------------
+# ---------------------------------
 # Page Setup
-# -----------------------------
-st.set_page_config(
-    page_title="AI Voice Phishing Detector",
-    layout="centered"
-)
+# ---------------------------------
+st.set_page_config(page_title="AI Voice Phishing Detector", layout="centered")
 
-# -----------------------------
+# ---------------------------------
 # Load Model
-# -----------------------------
+# ---------------------------------
 model = pickle.load(open("voice_phishing_model.pkl", "rb"))
 
-# -----------------------------
+# ---------------------------------
 # Feature Extraction
-# -----------------------------
+# ---------------------------------
 def extract_features(audio_path):
-    y, sr = librosa.load(audio_path, sr=16000, mono=True)
-
-    mfcc = librosa.feature.mfcc(
-        y=y,
-        sr=sr,
-        n_mfcc=20,
-        n_fft=2048,
-        hop_length=512
-    )
-
+    y, sr = librosa.load(audio_path, sr=16000)
+    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20)
     mfcc_mean = np.mean(mfcc.T, axis=0)
     return y, sr, mfcc, mfcc_mean
 
 
-# -----------------------------
+# ---------------------------------
 # UI
-# -----------------------------
+# ---------------------------------
 st.title("🎙️ AI Voice Phishing Detector")
-st.write("Upload a **WAV audio file** for analysis")
+st.write("Upload a WAV file to analyze voice patterns")
 
-uploaded_file = st.file_uploader("Upload audio", type=["wav"])
+uploaded_file = st.file_uploader("Upload audio file", type=["wav"])
 
 if uploaded_file:
+
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
         tmp.write(uploaded_file.read())
         audio_path = tmp.name
@@ -54,79 +44,74 @@ if uploaded_file:
 
     y, sr, mfcc, mfcc_mean = extract_features(audio_path)
 
-    # ===============================
+    # ==================================
     # 🔊 WAVEFORM
-    # ===============================
+    # ==================================
     st.subheader("🔊 Audio Waveform")
 
-    fig_wave, ax = plt.subplots(figsize=(12, 3), dpi=150)
-    librosa.display.waveshow(y, sr=sr, ax=ax, color="blue")
-    ax.set_title("Waveform")
-    ax.set_xlabel("Time (seconds)")
-    ax.set_ylabel("Amplitude")
-    st.pyplot(fig_wave)
+    fig1, ax1 = plt.subplots(figsize=(14, 3), dpi=200)
+    librosa.display.waveshow(y, sr=sr, ax=ax1, color="blue")
+    ax1.set_title("Waveform")
+    ax1.set_xlabel("Time (seconds)")
+    ax1.set_ylabel("Amplitude")
+    st.pyplot(fig1)
 
-    # ===============================
-    # 🎵 MFCC (CLEAR)
-    # ===============================
+    # ==================================
+    # 🎵 MFCC (SUPER CLEAR)
+    # ==================================
     st.subheader("🎵 MFCC Feature Map")
 
     mfcc_db = librosa.power_to_db(mfcc, ref=np.max)
 
-    fig_mfcc, ax = plt.subplots(figsize=(12, 4), dpi=150)
+    fig2, ax2 = plt.subplots(figsize=(14, 5), dpi=200)
 
-    img1 = librosa.display.specshow(
+    img1 = ax2.imshow(
         mfcc_db,
-        x_axis="time",
-        sr=sr,
+        origin="lower",
+        aspect="auto",
         cmap="magma",
-        vmin=-80,
-        vmax=0,
-        ax=ax
+        interpolation="nearest"
     )
 
-    ax.set_title("MFCC (High Clarity)")
-    ax.set_xlabel("Time (seconds)")
-    ax.set_ylabel("MFCC Coefficients")
+    ax2.set_title("MFCC (High Resolution)")
+    ax2.set_xlabel("Time Frames")
+    ax2.set_ylabel("MFCC Coefficients")
 
-    cbar1 = fig_mfcc.colorbar(img1, ax=ax)
+    cbar1 = fig2.colorbar(img1, ax=ax2)
     cbar1.set_label("Intensity (dB)")
 
-    st.pyplot(fig_mfcc)
+    st.pyplot(fig2)
 
-    # ===============================
-    # 📊 FREQUENCY SPECTRUM
-    # ===============================
+    # ==================================
+    # 📊 FREQUENCY SPECTRUM (CLEAR)
+    # ==================================
     st.subheader("📊 Frequency Spectrum")
 
     D = librosa.stft(y, n_fft=2048, hop_length=512)
     S_db = librosa.amplitude_to_db(np.abs(D), ref=np.max)
 
-    fig_spec, ax = plt.subplots(figsize=(12, 4), dpi=150)
+    fig3, ax3 = plt.subplots(figsize=(14, 5), dpi=200)
 
-    img2 = librosa.display.specshow(
+    img2 = ax3.imshow(
         S_db,
-        sr=sr,
-        x_axis="time",
-        y_axis="log",
+        origin="lower",
+        aspect="auto",
         cmap="inferno",
-        vmin=-80,
-        vmax=0,
-        ax=ax
+        interpolation="nearest"
     )
 
-    ax.set_title("Frequency Spectrum (Log Scale)")
-    ax.set_xlabel("Time (seconds)")
-    ax.set_ylabel("Frequency (Hz)")
+    ax3.set_title("Frequency Spectrum (Log Scale)")
+    ax3.set_xlabel("Time Frames")
+    ax3.set_ylabel("Frequency Bins")
 
-    cbar2 = fig_spec.colorbar(img2, ax=ax)
+    cbar2 = fig3.colorbar(img2, ax=ax3)
     cbar2.set_label("Intensity (dB)")
 
-    st.pyplot(fig_spec)
+    st.pyplot(fig3)
 
-    # ===============================
+    # ==================================
     # 🔍 Prediction
-    # ===============================
+    # ==================================
     prediction = model.predict([mfcc_mean])
 
     st.subheader("🔍 Prediction Result")
@@ -136,10 +121,8 @@ if uploaded_file:
     else:
         st.success("✅ Safe Voice")
 
-
-
-
         
+
 
 
 
