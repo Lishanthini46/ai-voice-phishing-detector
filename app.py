@@ -7,7 +7,7 @@ import tempfile
 import pickle
 
 # ---------------------------------
-# Page Setup
+# Page Config
 # ---------------------------------
 st.set_page_config(page_title="AI Voice Phishing Detector", layout="centered")
 
@@ -30,7 +30,7 @@ def extract_features(audio_path):
 # UI
 # ---------------------------------
 st.title("🎙️ AI Voice Phishing Detector")
-st.write("Upload a WAV file to analyze voice patterns")
+st.write("Upload a WAV audio file")
 
 uploaded_file = st.file_uploader("Upload audio file", type=["wav"])
 
@@ -44,22 +44,24 @@ if uploaded_file:
 
     y, sr, mfcc, mfcc_mean = extract_features(audio_path)
 
-    # ==================================
-    # 🔊 WAVEFORM
-    # ==================================
+    # ==================================================
+    # 🔊 WAVEFORM (CLEAR)
+    # ==================================================
     st.subheader("🔊 Audio Waveform")
 
     fig1, ax1 = plt.subplots(figsize=(14, 3), dpi=200)
-    librosa.display.waveshow(y, sr=sr, ax=ax1, color="blue")
+    ax1.plot(y, color="black", linewidth=0.8)
     ax1.set_title("Waveform")
-    ax1.set_xlabel("Time (seconds)")
+    ax1.set_xlabel("Samples")
     ax1.set_ylabel("Amplitude")
+    ax1.grid(alpha=0.3)
+
     st.pyplot(fig1)
 
-    # ==================================
-    # 🎵 MFCC (SUPER CLEAR)
-    # ==================================
-    st.subheader("🎵 MFCC Feature Map")
+    # ==================================================
+    # 🎵 MFCC (BLACK & WHITE – SHARP)
+    # ==================================================
+    st.subheader("🎵 MFCC (High Clarity)")
 
     mfcc_db = librosa.power_to_db(mfcc, ref=np.max)
 
@@ -69,22 +71,22 @@ if uploaded_file:
         mfcc_db,
         origin="lower",
         aspect="auto",
-        cmap="magma",
+        cmap="gray",
         interpolation="nearest"
     )
 
-    ax2.set_title("MFCC (High Resolution)")
+    ax2.set_title("MFCC Coefficients")
     ax2.set_xlabel("Time Frames")
-    ax2.set_ylabel("MFCC Coefficients")
+    ax2.set_ylabel("MFCC Index")
 
     cbar1 = fig2.colorbar(img1, ax=ax2)
-    cbar1.set_label("Intensity (dB)")
+    cbar1.set_label("dB")
 
     st.pyplot(fig2)
 
-    # ==================================
+    # ==================================================
     # 📊 FREQUENCY SPECTRUM (CLEAR)
-    # ==================================
+    # ==================================================
     st.subheader("📊 Frequency Spectrum")
 
     D = librosa.stft(y, n_fft=2048, hop_length=512)
@@ -96,22 +98,22 @@ if uploaded_file:
         S_db,
         origin="lower",
         aspect="auto",
-        cmap="inferno",
+        cmap="gray",
         interpolation="nearest"
     )
 
-    ax3.set_title("Frequency Spectrum (Log Scale)")
+    ax3.set_title("Frequency Spectrum")
     ax3.set_xlabel("Time Frames")
     ax3.set_ylabel("Frequency Bins")
 
     cbar2 = fig3.colorbar(img2, ax=ax3)
-    cbar2.set_label("Intensity (dB)")
+    cbar2.set_label("dB")
 
     st.pyplot(fig3)
 
-    # ==================================
+    # ==================================================
     # 🔍 Prediction
-    # ==================================
+    # ==================================================
     prediction = model.predict([mfcc_mean])
 
     st.subheader("🔍 Prediction Result")
@@ -121,7 +123,9 @@ if uploaded_file:
     else:
         st.success("✅ Safe Voice")
 
+
         
+
 
 
 
