@@ -72,7 +72,7 @@ if uploaded_file is not None:
         st.error("Could not recognize speech")
 
     # ==============================
-    # PHISHING DETECTION LOGIC (Threshold)
+    # PHISHING DETECTION LOGIC (THRESHOLD)
     # ==============================
     st.subheader("🛑 Call Detection Result")
     phishing_keywords = [
@@ -84,7 +84,7 @@ if uploaded_file is not None:
     text_lower = text.lower()
     keyword_count = sum(word in text_lower for word in phishing_keywords)
 
-    # Set threshold: only detect phishing if 2 or more keywords match
+    # Threshold: detect phishing only if 2 or more keywords match
     threshold = 2
 
     st.info(f"Phishing Keywords Detected: {keyword_count}")
@@ -93,3 +93,5 @@ if uploaded_file is not None:
         st.error("🚨 PHISHING CALL DETECTED")
     else:
         st.success("✅ NORMAL CALL")
+
+
