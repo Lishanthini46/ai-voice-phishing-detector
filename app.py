@@ -1,139 +1,106 @@
 import streamlit as st
-import numpy as np
 import librosa
 import librosa.display
 import matplotlib.pyplot as plt
-import tempfile
-import pickle
+import numpy as np
+import speech_recognition as sr
 
 # -------------------------------
-# Page Config
+# APP TITLE
 # -------------------------------
-st.set_page_config(
-    page_title="AI Voice Phishing Detector",
-    layout="centered"
-)
-
+st.set_page_config(page_title="AI Voice Phishing Detector", layout="centered")
 st.title("🎙️ AI Voice Phishing Detector")
 
 # -------------------------------
-# Load model
+# FILE UPLOAD
 # -------------------------------
-model = pickle.load(open("voice_phishing_model.pkl", "rb"))
+uploaded_file = st.file_uploader("Upload a WAV audio file", type=["wav"])
 
-# -------------------------------
-# Audio Feature Extraction
-# -------------------------------
-def extract_features(audio_path):
-    y, sr = librosa.load(audio_path, sr=16000)
+if uploaded_file is not None:
 
-    # Normalize audio
-    y = librosa.util.normalize(y)
-
-    # MFCC
-    mfcc = librosa.feature.mfcc(
-        y=y,
-        sr=sr,
-        n_mfcc=13,
-        n_fft=2048,
-        hop_length=512
-    )
-
-    mfcc_mean = np.mean(mfcc, axis=1)
-    return y, sr, mfcc, mfcc_mean
-
-
-# -------------------------------
-# Upload Audio
-# -------------------------------
-uploaded_file = st.file_uploader("Upload WAV file", type=["wav"])
-
-if uploaded_file:
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-        tmp.write(uploaded_file.read())
-        audio_path = tmp.name
+    # -------------------------------
+    # LOAD AUDIO
+    # -------------------------------
+    y, sr = librosa.load(uploaded_file, sr=None)
 
     st.audio(uploaded_file)
 
-    # Extract features
-    y, sr, mfcc, mfcc_mean = extract_features(audio_path)
-
-    # ===============================
-    # 🎵 WAVEFORM
-    # ===============================
-    st.subheader("🎵 Audio Waveform")
-
+    # -------------------------------
+    # WAVEFORM
+    # -------------------------------
+    st.subheader("🔊 Waveform")
     fig1, ax1 = plt.subplots(figsize=(10, 3))
-    librosa.display.waveshow(y, sr=sr, ax=ax1, color="blue")
-    ax1.set_title("Waveform")
-    ax1.set_xlabel("Time (s)")
-    ax1.set_ylabel("Amplitude")
+    librosa.display.waveshow(y, sr=sr, ax=ax1)
+    ax1.set_title("Audio Waveform")
     st.pyplot(fig1)
 
-    # ===============================
-    # 📊 FREQUENCY SPECTRUM (CLEAR)
-    # ===============================
-    st.subheader("📊 Frequency Spectrum")
-
-    D = np.abs(librosa.stft(y, n_fft=2048))
-    D_db = librosa.amplitude_to_db(D, ref=np.max)
+    # -------------------------------
+    # MFCC
+    # -------------------------------
+    st.subheader("📊 MFCC Feature Visualization")
+    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
 
     fig2, ax2 = plt.subplots(figsize=(10, 4))
-    img2 = librosa.display.specshow(
-        D_db,
-        sr=sr,
-        x_axis="time",
-        y_axis="log",
-        cmap="magma",
-        ax=ax2
-    )
-    ax2.set_title("Frequency Spectrum (Log Scale)")
-    fig2.colorbar(img2, ax=ax2, format="%+2.0f dB")
+    librosa.display.specshow(mfcc, x_axis="time", sr=sr, ax=ax2)
+    plt.colorbar(format="%+2.0f dB")
+    ax2.set_title("MFCC Features")
     st.pyplot(fig2)
 
-    # ===============================
-    # 🎼 MFCC (CLEAR & SHARP)
-    # ===============================
-    st.subheader("🎼 MFCC (Mel Frequency Cepstral Coefficients)")
-
-    mfcc_db = librosa.power_to_db(mfcc, ref=np.max)
+    # -------------------------------
+    # FREQUENCY SPECTRUM
+    # -------------------------------
+    st.subheader("📈 Frequency Spectrum")
+    stft = np.abs(librosa.stft(y))
+    db = librosa.amplitude_to_db(stft, ref=np.max)
 
     fig3, ax3 = plt.subplots(figsize=(10, 4))
-    img3 = librosa.display.specshow(
-        mfcc_db,
-        x_axis="time",
-        cmap="viridis",
-        ax=ax3
-    )
-    ax3.set_title("MFCC Features")
-    ax3.set_ylabel("MFCC Coefficients")
-    fig3.colorbar(img3, ax=ax3)
+    librosa.display.specshow(db, sr=sr, x_axis="time", y_axis="hz", ax=ax3)
+    plt.colorbar()
+    ax3.set_title("Spectrogram")
     st.pyplot(fig3)
 
-    # ===============================
-    # 🔍 Prediction
-    # ===============================
-    st.subheader("🔍 Prediction Result")
+    # -------------------------------
+    # SPEECH TO TEXT
+    # -------------------------------
+    st.subheader("🗣️ Speech to Text")
 
-    mfcc_mean = mfcc_mean.reshape(1, -1)
+    recognizer = sr.Recognizer()
+    with sr.AudioFile(uploaded_file) as source:
+        audio = recognizer.record(source)
 
     try:
-        prediction = model.predict(mfcc_mean)
+        text = recognizer.recognize_google(audio)
+        st.success(f"Recognized Text: {text}")
+    except:
+        text = ""
+        st.error("Could not recognize speech")
 
-        if prediction[0] == 1:
-            st.error("⚠️ Phishing Voice Detected")
-        else:
-            st.success("✅ Safe / Normal Voice")
+    # -------------------------------
+    # PHISHING DETECTION LOGIC
+    # -------------------------------
+    st.subheader("🛑 Call Detection Result")
 
-    except Exception as e:
-        st.error("Prediction error: Model feature mismatch")
-        st.text(str(e))
+    phishing_keywords = [
+        "otp", "bank", "account", "verify", "password",
+        "urgent", "click", "link", "payment", "card",
+        "suspend", "blocked", "kyc"
+    ]
+
+    text_lower = text.lower()
+    is_phishing = any(word in text_lower for word in phishing_keywords)
+
+    if is_phishing:
+        st.error("🚨 PHISHING CALL DETECTED")
+    else:
+        st.success("✅ NORMAL CALL")
+
 
 
 
 
 
         
+
 
 
 
